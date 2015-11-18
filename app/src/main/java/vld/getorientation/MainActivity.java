@@ -14,6 +14,7 @@ import android.location.LocationManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,7 +33,7 @@ import vld.getorientation.R;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener,LocationListener,BluetoothSPP.OnDataReceivedListener,BluetoothSPP.BluetoothConnectionListener{
 
-    float[] mags,accels;
+    float[] mags,accels,rot;
 
     private static final int matrix_size = 16;
     float[] r = new float[matrix_size];
@@ -41,7 +42,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     float[] values = new float[3];
 
     private SensorManager sm;
-    private Sensor acc,mag,baro;
+    private Sensor acc,mag,baro,rotation;
 
     double azimuth,pitch,roll;
 
@@ -57,6 +58,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     FileWriter fw;
 
+    ImageView im;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,10 +72,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         tvs[3]=tv_serial= (TextView)findViewById(R.id.tv_serial);
         tvs[4]=tv_time= (TextView)findViewById(R.id.tv_time);
 
+        im = (ImageView)findViewById(R.id.im);
+
         sm = (SensorManager)getSystemService(SENSOR_SERVICE);
         acc = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         mag = sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         baro = sm.getDefaultSensor(Sensor.TYPE_PRESSURE);
+        //rotation = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
 
         dateFormat = new SimpleDateFormat("HH:mm:ss");
 
@@ -113,11 +119,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             case Sensor.TYPE_ACCELEROMETER:
                 accels = sensorEvent.values.clone();
                 break;
+/*            case Sensor.TYPE_ROTATION_VECTOR:
+                TextView tv_rot = (TextView)findViewById(R.id.tv_rot);
+                rot = sensorEvent.values.clone();
+                String s="";
+                for (int i =0 ; i<rot.length;i++){
+                    //Log.i("Rot"+i,"-----------"+radToDeg(rot[i])+"-----------");
+                    s+="Rot "+i+" : "+radToDeg(rot[i])+"\n";
+                }
+                tv_rot.setText(s);
+                break;*/
         }
         if(mags!=null && accels!=null){
             SensorManager.getRotationMatrix(r, I, accels, mags);
-            SensorManager.remapCoordinateSystem(r, SensorManager.AXIS_X,
-                    SensorManager.AXIS_Y, outR);
+            SensorManager.remapCoordinateSystem(r, SensorManager.AXIS_X, SensorManager.AXIS_Y, outR);
             SensorManager.getOrientation(outR, values);
 
             azimuth = radToDeg(values[0]);
@@ -167,6 +182,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sm.registerListener(this, acc, SensorManager.SENSOR_DELAY_NORMAL);
         sm.registerListener(this, mag, SensorManager.SENSOR_DELAY_NORMAL);
         sm.registerListener(this, baro, SensorManager.SENSOR_DELAY_NORMAL);
+        //sm.registerListener(this, rotation, SensorManager.SENSOR_DELAY_NORMAL);
         //fw  = new FileWriter(); fw.start();
 
     }
@@ -209,22 +225,25 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     // SERIAL LISTENER
     @Override
     public void onDataReceived(byte[] data, String message) {
-        tv_serial.setText("Data : "+message);
+        String[] msg = message.split(",");
+        if(msg.length > 1)
+            tv_serial.setText("Distance : "+msg[3]+"\nYaw : "+msg[0]+"\nPitch  : "+msg[1]+"\nRoll : "+msg[2]);
+        //tv_serial.setText("Data : "+msg.length);
     }
 
     @Override
     public void onDeviceConnected(String name, String address) {
-        tv_status.setText("Status : "+"Connected to : "+name);
+        tv_status.setText("BT Status : "+"Connected to : "+name);
     }
 
     @Override
     public void onDeviceDisconnected() {
-        tv_status.setText("Status : " + "Disconnected!");
+        tv_status.setText("BT Status : " + "Disconnected!");
     }
 
     @Override
     public void onDeviceConnectionFailed() {
-        tv_status.setText("Status : " + "Fail to connect!");
+        tv_status.setText("BT Status : " + "Fail to connect!");
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
